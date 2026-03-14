@@ -42,7 +42,7 @@ const Sidebar = () => {
       }}
     >
       <Box sx={{ p: open ? 2 : 1, display: 'flex', alignItems: 'center', justifyContent: open ? 'space-between' : 'center', minHeight: 64 }}>
-        {open && <Typography variant="h6" color="primary" fontWeight="bold">Hally</Typography>}
+        {open && <Typography variant="h6" color="primary.main" fontWeight="bold">Hally</Typography>}
         <IconButton onClick={handleDrawerToggle}>
           {open ? <ChevronLeftIcon /> : <MenuIcon />}
         </IconButton>
@@ -58,10 +58,15 @@ const Sidebar = () => {
             sx={{
               mb: 1,
               mx: 1,
-              borderRadius: 1,
+              borderRadius: 2, // Use theme or explicit rounded corners
               justifyContent: open ? 'initial' : 'center',
               px: open ? 2.5 : 1,
-              '&.Mui-selected': { bgcolor: 'primary.light', color: 'primary.contrastText', '& .MuiListItemIcon-root': { color: 'primary.contrastText' } },
+              '&.Mui-selected': { 
+                bgcolor: 'primary.main', 
+                color: 'primary.contrastText', 
+                '& .MuiListItemIcon-root': { color: 'primary.contrastText' },
+                '&:hover': { bgcolor: 'primary.dark' }
+              },
               '&:hover': { bgcolor: 'action.hover' }
             }}
           >
