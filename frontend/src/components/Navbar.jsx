@@ -5,7 +5,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 
 const Navbar = () => {
   return (
-    <AppBar position="static" color="inherit" elevation={1}>
+    <AppBar position="static" color="inherit" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
       <Toolbar>
         <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 2, display: { sm: 'none' } }}>
           <MenuIcon />
@@ -17,7 +17,7 @@ const Navbar = () => {
           <IconButton color="inherit">
             <NotificationsIcon />
           </IconButton>
-          <Avatar sx={{ bgcolor: 'secondary.main', width: 32, height: 32 }}>U</Avatar>
+          <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>U</Avatar>
         </Box>
       </Toolbar>
     </AppBar>
