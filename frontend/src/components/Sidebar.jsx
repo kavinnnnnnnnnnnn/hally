@@ -42,7 +42,14 @@ const Sidebar = () => {
       }}
     >
       <Box sx={{ p: open ? 2 : 1, display: 'flex', alignItems: 'center', justifyContent: open ? 'space-between' : 'center', minHeight: 64 }}>
-        {open && <Typography variant="h6" color="primary.main" fontWeight="bold">Hally</Typography>}
+        {open && (
+          <Box 
+            component="img"
+            src="https://www.halleyx.com/img/halleyx-logo-line-black.05c516d1.svg"
+            alt="HalleyX Logo"
+            sx={{ height: 28, maxWidth: '140px', objectFit: 'contain' }}
+          />
+        )}
         <IconButton onClick={handleDrawerToggle}>
           {open ? <ChevronLeftIcon /> : <MenuIcon />}
         </IconButton>
