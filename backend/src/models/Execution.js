@@ -24,6 +24,12 @@ const Execution = sequelize.define("Execution", {
   },
   triggered_by: {
     type: DataTypes.STRING
+  },
+  approver_id: {
+    type: DataTypes.UUID
+  },
+  error_message: {
+    type: DataTypes.TEXT
   }
 })
 

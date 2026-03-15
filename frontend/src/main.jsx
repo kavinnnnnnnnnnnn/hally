@@ -61,14 +61,18 @@ const theme = createTheme({
   },
 })
 
+import ErrorBoundary from './ErrorBoundary'
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <WorkflowProvider>
-          <App />
-        </WorkflowProvider>
+        <ErrorBoundary>
+          <WorkflowProvider>
+            <App />
+          </WorkflowProvider>
+        </ErrorBoundary>
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,

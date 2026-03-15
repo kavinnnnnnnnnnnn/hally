@@ -20,7 +20,7 @@ const WorkflowList = () => {
     const fetchWorkflows = async () => {
       try {
         const data = await workflowAPI.getAllWorkflows();
-        setWorkflows(data);
+        setWorkflows(data.workflows || []);
       } catch (error) {
         console.error('Failed to fetch workflows:', error);
       } finally {

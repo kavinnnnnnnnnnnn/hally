@@ -9,18 +9,25 @@ class RuleEngine {
     console.log(`Evaluating ${rules.length} rules...`);
     
     const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
+    let evaluationError = null;
 
     for (const rule of sortedRules) {
-      const isMatched = this.checkCondition(rule.condition, data);
-      console.log(`Rule ${rule.id} (priority ${rule.priority}): ${rule.condition} -> ${isMatched ? "MATCHED" : "NOT MATCHED"}`);
-      
-      if (isMatched) {
-        return rule;
+      try {
+        const isMatched = this.checkCondition(rule.condition, data);
+        console.log(`Rule ${rule.id} (priority ${rule.priority}): ${rule.condition} -> ${isMatched ? "MATCHED" : "NOT MATCHED"}`);
+        
+        if (isMatched) {
+          return { matchedRule: rule, error: evaluationError };
+        }
+      } catch (err) {
+        console.warn(`Error evaluating rule ${rule.id}:`, err.message);
+        evaluationError = err.message;
+        // Continue to other rules if one fails
       }
     }
 
     console.log("No rules matched. Returning null.");
-    return null;
+    return { matchedRule: null, error: evaluationError };
   }
 
   /**
@@ -31,8 +38,7 @@ class RuleEngine {
 
     let evalString = condition;
 
-    // Support for functions: contains(field, value), startsWith(field, prefix), endsWith(field, suffix)
-    // We assume these are written as contains(data.field, 'value') or similar if using the data. prefix
+    // Support for functions
     evalString = evalString.replace(/contains\(([^,]+),\s*['"]?([^'"]+)['"]?\)/g, (match, field, val) => {
       return `(${field}).includes(${JSON.stringify(val.trim())})`;
     });
@@ -46,28 +52,47 @@ class RuleEngine {
     });
 
     try {
-      // Evaluate the expression with 'data' as a local variable
-      // Using 'new Function' with 'data' available in the scope
+      // 1. Try strict evaluation first
       const result = new Function("data", `return (${evalString})`)(data);
-      return !!result;
+      if (result) return true;
+
+      // 2. If strict fails, try case-insensitive fallback for string comparisons
+      const lowerData = {};
+      Object.keys(data).forEach(key => {
+        lowerData[key] = typeof data[key] === 'string' ? data[key].toLowerCase() : data[key];
+      });
+      const lowerEval = evalString.toLowerCase();
+      const fallbackResult = new Function("data", `return (${lowerEval})`)(lowerData);
+      return !!fallbackResult;
     } catch (error) {
-      console.warn(`Condition evaluation failure: "${evalString}"`, error.message);
-      
-      // Fallback: if 'data.' wasn't used, try replacing keys (legacy support)
+      // Fallback: legacy support for keys without 'data.' prefix
       try {
-        let fallbackEval = evalString;
+        // 1. Try strict legacy replacement
+        const result = this.evaluateLegacy(evalString, data);
+        if (result) return true;
+
+        // 2. Try case-insensitive legacy replacement
+        const lowerData = {};
         Object.keys(data).forEach(key => {
-          const val = data[key];
-          const replacement = typeof val === 'string' ? JSON.stringify(val) : val;
-          const regex = new RegExp(`\\b${key}\\b`, 'g');
-          fallbackEval = fallbackEval.replace(regex, replacement);
+          lowerData[key] = typeof data[key] === 'string' ? data[key].toLowerCase() : data[key];
         });
-        const fallbackResult = new Function(`return (${fallbackEval})`)();
-        return !!fallbackResult;
+        const lowerEval = evalString.toLowerCase();
+        return this.evaluateLegacy(lowerEval, lowerData);
       } catch (fallbackError) {
-        return false;
+        throw new Error(`Invalid condition: "${condition}". Error: ${error.message}`);
       }
     }
+  }
+
+  evaluateLegacy(evalString, data) {
+    let finalEval = evalString;
+    Object.keys(data).forEach(key => {
+      const val = data[key];
+      const replacement = typeof val === 'string' ? JSON.stringify(val) : val;
+      const regex = new RegExp(`\\b${key}\\b`, 'g');
+      finalEval = finalEval.replace(regex, replacement);
+    });
+    return !!new Function(`return (${finalEval})`)();
   }
 }
 

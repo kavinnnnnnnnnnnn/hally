@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Typography, Box, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, MenuItem, Select, FormControl, InputLabel
+  DialogActions, TextField, MenuItem, Select, FormControl, InputLabel,
+  Snackbar, Alert
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
@@ -16,12 +17,13 @@ const StepEditor = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStep, setEditingStep] = useState(null);
-  const [formData, setFormData] = useState({ name: '', type: 'task' });
+  const [formData, setFormData] = useState({ name: '', step_type: 'task' });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const fetchSteps = async () => {
     try {
       const data = await stepAPI.getStepsByWorkflow(workflowId);
-      setSteps(Array.isArray(data) ? data : []);
+      setSteps(Array.isArray(data) ? data.filter(s => s && s.id) : []);
     } catch (err) {
       console.error('Failed to fetch steps:', err);
     } finally {
@@ -36,10 +38,10 @@ const StepEditor = () => {
   const handleOpenDialog = (step = null) => {
     if (step) {
       setEditingStep(step);
-      setFormData({ name: step.name, type: step.type });
+      setFormData({ name: step.name || '', step_type: step.step_type || 'task' });
     } else {
       setEditingStep(null);
-      setFormData({ name: '', type: 'task' });
+      setFormData({ name: '', step_type: 'task' });
     }
     setDialogOpen(true);
   };
@@ -47,29 +49,45 @@ const StepEditor = () => {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingStep(null);
-    setFormData({ name: '', type: 'task' });
+    setFormData({ name: '', step_type: 'task' });
   };
 
   const handleSave = async () => {
     try {
+      const trimmedName = (formData.name || '').trim();
+      if (!trimmedName) return;
+
       if (editingStep) {
-        await stepAPI.updateStep(workflowId, editingStep.id, formData);
+        await stepAPI.updateStep(workflowId, editingStep.id, { ...formData, name: trimmedName });
+        setSnackbar({ open: true, message: 'Step updated successfully!', severity: 'success' });
       } else {
-        await stepAPI.createStep(workflowId, formData);
+        await stepAPI.createStep(workflowId, { ...formData, name: trimmedName });
+        setSnackbar({ open: true, message: 'Step added successfully!', severity: 'success' });
       }
       handleCloseDialog();
       fetchSteps();
     } catch (err) {
       console.error('Failed to save step:', err);
+      setSnackbar({ 
+        open: true, 
+        message: `Failed to save step: ${err.response?.data?.error || err.message}`, 
+        severity: 'error' 
+      });
     }
   };
 
   const handleDelete = async (stepId) => {
     try {
       await stepAPI.deleteStep(workflowId, stepId);
+      setSnackbar({ open: true, message: 'Step deleted successfully!', severity: 'success' });
       fetchSteps();
     } catch (err) {
       console.error('Failed to delete step:', err);
+      setSnackbar({ 
+        open: true, 
+        message: `Failed to delete step: ${err.response?.data?.error || err.message}`, 
+        severity: 'error' 
+      });
     }
   };
 
@@ -116,9 +134,9 @@ const StepEditor = () => {
           <FormControl fullWidth>
             <InputLabel>Step Type</InputLabel>
             <Select
-              value={formData.type}
+              value={formData.step_type}
               label="Step Type"
-              onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, step_type: e.target.value }))}
             >
               {stepTypes.map(t => (
                 <MenuItem key={t} value={t}>
@@ -135,6 +153,16 @@ const StepEditor = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={6000} 
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+      >
+        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

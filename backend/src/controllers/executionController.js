@@ -1,14 +1,43 @@
 const ExecutionEngineService = require("../services/ExecutionEngineService")
-const { Execution, ExecutionLog } = require("../models")
+const { Execution, ExecutionLog, Workflow } = require("../models")
 
 // Start workflow execution
 exports.startExecution = async (req, res) => {
   try {
     const { workflow_id } = req.params
-    const execution = await ExecutionEngineService.executeWorkflow(workflow_id, req.body)
-    res.status(201).json(execution)
+    // Frontend sends inputs as { inputs: { ... } }
+    const inputData = req.body.inputs || req.body
+    const executionResult = await ExecutionEngineService.executeWorkflow(workflow_id, inputData)
+    
+    // Fetch with logs to provide steps information to frontend
+    const execution = await Execution.findByPk(executionResult.id, {
+      include: [{ model: ExecutionLog, as: "logs" }]
+    })
+    
+    // Map logs to 'steps' for frontend compatibility if needed
+    const responseData = execution.toJSON()
+    responseData.steps = responseData.logs || []
+    
+    res.status(201).json(responseData)
   } catch (error) {
+    console.error('Execution Error:', error)
     res.status(400).json({ error: error.message })
+  }
+}
+
+// Get all execution logs (for frontend Logs page)
+exports.getAllExecutions = async (req, res) => {
+  try {
+    const { limit = 20, offset = 0 } = req.query
+    const executions = await Execution.findAndCountAll({
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [["createdAt", "DESC"]],
+      include: [{ model: Workflow, as: "Workflow", attributes: ["name"] }]
+    })
+    res.json(executions)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
   }
 }
 

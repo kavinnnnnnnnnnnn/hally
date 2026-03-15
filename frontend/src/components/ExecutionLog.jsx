@@ -15,10 +15,14 @@ const statusConfig = {
 const ExecutionLog = ({ steps, executionId }) => {
   if (!steps || steps.length === 0) return null;
 
-  // Deduplicate: keep the latest status for each step name
+  // Deduplicate and normalize: keep the latest status for each step name
   const stepMap = new Map();
-  steps.forEach(s => stepMap.set(s.step, s.status));
-  const uniqueSteps = Array.from(stepMap.entries()).map(([step, status]) => ({ step, status }));
+  steps.forEach(s => {
+    const name = s.step_name || s.step || 'Unknown Step';
+    const status = (s.status || 'pending').toLowerCase();
+    stepMap.set(name, { status, error: s.error_message });
+  });
+  const uniqueSteps = Array.from(stepMap.entries()).map(([step, data]) => ({ step, ...data }));
 
   return (
     <Paper elevation={2} sx={{ p: 3, mt: 3 }}>
@@ -29,9 +33,9 @@ const ExecutionLog = ({ steps, executionId }) => {
         {uniqueSteps.map((item, index) => {
           const config = statusConfig[item.status] || statusConfig.pending;
           return (
-            <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
               {/* Vertical timeline line */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mr: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mr: 2, mt: 0.5 }}>
                 <Box
                   sx={{
                     width: 32,
@@ -42,11 +46,11 @@ const ExecutionLog = ({ steps, executionId }) => {
                     justifyContent: 'center',
                     bgcolor: item.status === 'completed' ? 'success.light'
                       : item.status === 'running' ? 'info.light'
-                      : item.status === 'failed' ? 'error.light'
+                      : item.status === 'failed' || item.status === 'warning' ? 'error.light'
                       : 'grey.200',
                     color: item.status === 'completed' ? 'success.dark'
                       : item.status === 'running' ? 'info.dark'
-                      : item.status === 'failed' ? 'error.dark'
+                      : item.status === 'failed' || item.status === 'warning' ? 'error.dark'
                       : 'grey.500',
                   }}
                 >
@@ -65,12 +69,18 @@ const ExecutionLog = ({ steps, executionId }) => {
                 <Typography variant="body1" fontWeight={item.status === 'running' ? 'bold' : 'normal'}>
                   {item.step}
                 </Typography>
+                {item.error && (
+                  <Typography variant="caption" color="error.main" sx={{ mt: 0.5, display: 'block' }}>
+                    Error: {item.error}
+                  </Typography>
+                )}
               </Box>
               <Chip
-                label={config.label}
-                color={config.color}
+                label={item.status === 'warning' ? 'Warning' : config.label}
+                color={item.status === 'warning' ? 'warning' : config.color}
                 size="small"
                 variant={item.status === 'running' ? 'filled' : 'outlined'}
+                sx={{ mt: 0.5 }}
               />
             </Box>
           );

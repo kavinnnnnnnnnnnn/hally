@@ -7,9 +7,11 @@ import { useParams } from 'react-router-dom';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ExecutionLog from '../components/ExecutionLog';
 import { executionAPI } from '../services/executionAPI';
+import { useNotifications } from '../context/NotificationContext';
 
 const ExecutionPage = () => {
   const { id: workflowId } = useParams();
+  const { addNotification } = useNotifications();
 
   const [inputs, setInputs] = useState({
     amount: '',
@@ -37,14 +39,39 @@ const ExecutionPage = () => {
       const result = await executionAPI.runWorkflow(workflowId, inputs);
       setExecutionResult(result);
 
+      const steps = result.steps || result.logs || [];
+      
       // Simulate step-by-step progress with delays
-      for (let i = 0; i < result.steps.length; i++) {
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
         await new Promise(resolve => setTimeout(resolve, 800));
-        setProgressSteps(prev => [...prev, result.steps[i]]);
+        setProgressSteps(prev => [...prev, step]);
+
+        // Add notification for the step completion
+        if (step.error_message) {
+          addNotification({
+            title: `Rule Error: ${step.step_name || step.step}`,
+            message: `Condition "${step.rule_evaluated}" failed with error: ${step.error_message}`,
+            type: 'error'
+          });
+        } else if (step.result === 'FALSE/DEFAULT') {
+          addNotification({
+            title: `No Match: ${step.step_name || step.step}`,
+            message: `Evaluation: "${step.rule_evaluated}". Result: No rules matched. using default path.`,
+            type: 'warning'
+          });
+        } else {
+          addNotification({
+            title: `Step Processed: ${step.step_name || step.step}`,
+            message: `Matched Condition: "${step.rule_evaluated}". Successfully moved to the next step.`,
+            type: 'info'
+          });
+        }
       }
     } catch (err) {
       console.error('Execution failed:', err);
-      setError('Workflow execution failed. Please try again.');
+      const errorMsg = err.response?.data?.error || err.message || 'Workflow execution failed. Please try again.';
+      setError(errorMsg);
     } finally {
       setExecuting(false);
     }
@@ -130,7 +157,7 @@ const ExecutionPage = () => {
       {progressSteps.length > 0 && (
         <ExecutionLog
           steps={progressSteps}
-          executionId={executionResult?.executionId}
+          executionId={executionResult?.id}
         />
       )}
     </Box>

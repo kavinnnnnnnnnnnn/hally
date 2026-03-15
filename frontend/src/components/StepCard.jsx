@@ -13,7 +13,7 @@ const typeConfig = {
 };
 
 const StepCard = ({ step, index, onEdit, onDelete }) => {
-  const config = typeConfig[step.type] || typeConfig.task;
+  const config = typeConfig[step.step_type] || typeConfig.task;
 
   return (
     <Card
@@ -35,7 +35,7 @@ const StepCard = ({ step, index, onEdit, onDelete }) => {
             <Typography variant="subtitle1" fontWeight="bold">{step.name}</Typography>
             <Chip
               icon={config.icon}
-              label={step.type.charAt(0).toUpperCase() + step.type.slice(1)}
+              label={step.step_type ? (step.step_type.charAt(0).toUpperCase() + step.step_type.slice(1)) : 'Task'}
               color={config.color}
               size="small"
               variant="outlined"

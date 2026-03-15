@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Typography, Box, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField
+  DialogActions, TextField, Snackbar, Alert
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
@@ -15,6 +15,7 @@ const RuleEditor = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState(null);
   const [formData, setFormData] = useState({ condition: '', priority: 1, nextStep: '' });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const fetchRules = async () => {
     try {
@@ -52,13 +53,20 @@ const RuleEditor = () => {
     try {
       if (editingRule) {
         await ruleAPI.updateRule(workflowId, editingRule.id, formData);
+        setSnackbar({ open: true, message: 'Rule updated successfully!', severity: 'success' });
       } else {
         await ruleAPI.createRule(workflowId, formData);
+        setSnackbar({ open: true, message: 'Rule added successfully!', severity: 'success' });
       }
       handleCloseDialog();
       fetchRules();
     } catch (err) {
       console.error('Failed to save rule:', err);
+      setSnackbar({ 
+        open: true, 
+        message: `Failed to save rule: ${err.response?.data?.error || err.message}`, 
+        severity: 'error' 
+      });
     }
   };
 
@@ -136,12 +144,23 @@ const RuleEditor = () => {
           <Button
             onClick={handleSave}
             variant="contained"
-            disabled={!formData.condition.trim() || !formData.nextStep.trim()}
+            disabled={!(formData.condition || '').trim()}
           >
+
             {editingRule ? 'Update' : 'Add'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={6000} 
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+      >
+        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

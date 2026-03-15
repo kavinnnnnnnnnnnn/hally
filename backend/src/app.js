@@ -2,8 +2,6 @@ const express = require("express")
 const cors = require("cors")
 
 const workflowRoutes = require("./routes/workflowRoutes")
-const stepRoutes = require("./routes/stepRoutes")
-const ruleRoutes = require("./routes/ruleRoutes")
 const executionRoutes = require("./routes/executionRoutes")
 
 const sequelize = require("./config/db")
@@ -18,6 +16,13 @@ app.use(express.json())
 
 app.get("/", (req, res) => {
   res.json({ message: "Workflow Automation Engine API is running" });
+});
+
+app.post("/api/log-error", (req, res) => {
+  console.log(">>> REACT CRASH ENCOUNTERED <<<");
+  console.log(req.body.error);
+  console.log(req.body.stack);
+  res.send('ok');
 });
 
 app.get("/api/health", async (req, res) => {
@@ -38,16 +43,17 @@ app.get("/api/health", async (req, res) => {
   }
 })
 
-app.post("/api/test/workflow", async (req, res) => {
+app.post("/api/test/create-workflow", async (req, res) => {
   try {
     const testWorkflow = await Workflow.create({
       name: "Expense Approval Test",
       version: 1,
       is_active: true,
       input_schema: {
-        amount: { type: "number" },
-        country: { type: "string" },
-        priority: { type: "string" }
+        "amount": {"type":"number","required":true},
+        "country": {"type":"string","required":true},
+        "department": {"type":"string","required":false},
+        "priority": {"type":"string","required":true}
       }
     })
     res.status(201).json(testWorkflow)
@@ -56,18 +62,41 @@ app.post("/api/test/workflow", async (req, res) => {
   }
 })
 
-app.post("/api/test/steps", async (req, res) => {
+app.post("/api/test/create-steps", async (req, res) => {
   try {
     const { workflow_id } = req.body
     if (!workflow_id) {
       return res.status(400).json({ error: "workflow_id is required" })
     }
 
+    const workflow = await Workflow.findByPk(workflow_id);
+    if (!workflow) return res.status(404).json({ error: "Workflow not found" });
+
     const steps = await Step.bulkCreate([
-      { name: "Manager Approval", step_type: "approval", order: 1, workflow_id },
-      { name: "Finance Notification", step_type: "notification", order: 2, workflow_id },
-      { name: "Task Rejection", step_type: "task", order: 3, workflow_id }
+      { 
+        name: "Manager Approval", 
+        step_type: "approval", 
+        order: 1, 
+        workflow_id,
+        metadata: { assignee_email: "manager@example.com" }
+      },
+      { 
+        name: "Finance Notification", 
+        step_type: "notification", 
+        order: 2, 
+        workflow_id,
+        metadata: { channel: "email" }
+      },
+      { 
+        name: "Task Rejection", 
+        step_type: "task", 
+        order: 3, 
+        workflow_id 
+      }
     ])
+
+    // Set start step
+    await workflow.update({ start_step_id: steps[0].id });
 
     res.status(201).json(steps)
   } catch (error) {
@@ -75,7 +104,7 @@ app.post("/api/test/steps", async (req, res) => {
   }
 })
 
-app.post("/api/test/rules", async (req, res) => {
+app.post("/api/test/create-rules", async (req, res) => {
   try {
     const { step_id } = req.body
     if (!step_id) {
@@ -102,13 +131,13 @@ app.post("/api/test/rules", async (req, res) => {
       {
         step_id,
         priority: 1,
-        condition: "data.amount > 100 && data.country == 'US' && data.priority == 'High'",
+        condition: "amount > 100 && country == 'US' && priority == 'High'",
         next_step_id: financeStep?.id
       },
       {
         step_id,
         priority: 2,
-        condition: "data.amount <= 100",
+        condition: "amount <= 100",
         next_step_id: rejectStep?.id
       },
       {
@@ -127,53 +156,33 @@ app.post("/api/test/rules", async (req, res) => {
 
 app.post("/api/test/execute", async (req, res) => {
   try {
+    // Phase 5 requires loading workflow, finding start step, evaluating rules, and storing execution + logs.
+    // Our ExecutionEngineService already does this in a more robust way.
     const workflow = await Workflow.findOne({ 
       where: { name: "Expense Approval Test" },
       order: [["createdAt", "DESC"]]
     })
     if (!workflow) return res.status(404).json({ error: "Workflow not found" })
 
-    const startStep = await Step.findOne({
-      where: { workflow_id: workflow.id, name: "Manager Approval" }
-    })
-    if (!startStep) return res.status(404).json({ error: "Start step not found" })
-
-    const rules = await Rule.findAll({
-      where: { step_id: startStep.id },
-      order: [["priority", "ASC"]]
-    })
-
-    const matchedRule = ruleEngine.evaluate(rules, req.body)
-    const nextStepId = matchedRule ? matchedRule.next_step_id : null
+    const ExecutionEngineService = require("./services/ExecutionEngineService");
+    const execution = await ExecutionEngineService.executeWorkflow(workflow.id, req.body)
     
-    let nextStepName = "None"
-    if (nextStepId) {
-      const nextStep = await Step.findByPk(nextStepId)
-      nextStepName = nextStep?.name || "Unknown"
-    }
-
-    const execution = await Execution.create({
-      workflow_id: workflow.id,
-      status: "COMPLETED",
-      data: req.body,
-      current_step_id: startStep.id
-    })
-
-    await ExecutionLog.create({
-      execution_id: execution.id,
-      step_name: startStep.name,
-      status: "SUCCESS",
-      rule_evaluated: matchedRule ? matchedRule.condition : "No rule matched / Default",
-      result: matchedRule ? "TRUE" : "FALSE/DEFAULT"
-    })
+    // Fetch result with the next step name for Phase 5 response requirement
+    const finalExec = await Execution.findByPk(execution.id);
+    const lastLog = await ExecutionLog.findOne({
+      where: { execution_id: execution.id },
+      order: [['createdAt', 'DESC']]
+    });
 
     res.json({
       execution_id: execution.id,
-      current_step: startStep.name,
-      next_step: nextStepName,
-      status: "completed"
+      workflow: workflow.name,
+      current_step: "Manager Approval", // First step as per challenge
+      next_step: lastLog?.selected_next_step || "FINISH",
+      status: execution.status.toLowerCase()
     })
   } catch (error) {
+    console.error("Test Execute Error:", error);
     res.status(500).json({ error: error.message })
   }
 })
@@ -193,11 +202,27 @@ app.get("/api/test/database-status", async (req, res) => {
   }
 })
 
-app.use("/api", workflowRoutes)
-app.use("/api/workflows/:workflow_id/steps", stepRoutes)
-app.use("/api/steps", stepRoutes)
-app.use("/api/steps/:step_id/rules", ruleRoutes)
-app.use("/api/rules", ruleRoutes)
+app.post("/api/test/fix-start-steps", async (req, res) => {
+  try {
+    const workflows = await Workflow.findAll()
+    const results = []
+    for (const workflow of workflows) {
+      const startStep = await Step.findOne({
+        where: { workflow_id: workflow.id, name: "Manager Approval" }
+      })
+      if (startStep) {
+        await workflow.update({ start_step_id: startStep.id })
+        results.push(`Updated ${workflow.name} (${workflow.id}) -> ${startStep.id}`)
+      }
+    }
+    res.json({ message: "Data fix complete", results })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Standardized Routing
+app.use("/api/workflows", workflowRoutes)
 app.use("/api/executions", executionRoutes)
 
 module.exports = app

@@ -3,6 +3,7 @@ const router = express.Router()
 const controller = require("../controllers/executionController")
 
 // Execution management
+router.get("/", controller.getAllExecutions)
 router.get("/:id", controller.getExecutionStatus)
 router.post("/:id/cancel", controller.cancelExecution)
 router.post("/:id/retry", controller.retryExecution)
