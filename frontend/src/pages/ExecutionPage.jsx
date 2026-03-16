@@ -48,23 +48,48 @@ const ExecutionPage = () => {
         setProgressSteps(prev => [...prev, step]);
 
         // Add notification for the step completion
-        if (step.error_message) {
+        const ruleLog = (() => {
+          try { return JSON.parse(step.rule_evaluated); } catch { return null; }
+        })();
+
+        // next_step_name is the DESTINATION — what step the workflow is going to
+        const destStepName = ruleLog?.next_step_name || null;
+        const rulesSummary = ruleLog?.evaluated_rules
+          ? ruleLog.evaluated_rules.map(r => `"${r.rule}" → ${r.result}`).join(' | ')
+          : step.rule_evaluated;
+
+        if (step.result === 'ERROR' || step.error_message) {
           addNotification({
-            title: `Rule Error: ${step.step_name || step.step}`,
-            message: `Condition "${step.rule_evaluated}" failed with error: ${step.error_message}`,
+            title: `⚠️ Rule Evaluation Error`,
+            message: `Step "${step.step_name}" — ${step.error_message || 'Unknown error'}`,
             type: 'error'
           });
-        } else if (step.result === 'FALSE/DEFAULT') {
+        } else if (step.result === 'NO_MATCH') {
           addNotification({
-            title: `No Match: ${step.step_name || step.step}`,
-            message: `Evaluation: "${step.rule_evaluated}". Result: No rules matched. using default path.`,
+            title: `❌ No Rule Matched`,
+            message: `Step "${step.step_name}" — No rule matched and no DEFAULT rule exists. Execution stopped.`,
+            type: 'error'
+          });
+        } else if (step.result === 'ENDPOINT') {
+          // Terminal step — no rules, just a workflow endpoint
+          addNotification({
+            title: step.step_name,
+            message: `Step "${step.step_name}" completed. Workflow finished.`,
+            type: 'success'
+          });
+        } else if (step.result === 'DEFAULT') {
+          // At least one rule did NOT match the full condition — use default path
+          addNotification({
+            title: destStepName || 'Task Rejection',
+            message: `Conditions not fully met in "${step.step_name}". Rules: ${rulesSummary}`,
             type: 'warning'
           });
         } else {
+          // MATCHED — all conditions in the winning rule were satisfied
           addNotification({
-            title: `Step Processed: ${step.step_name || step.step}`,
-            message: `Matched Condition: "${step.rule_evaluated}". Successfully moved to the next step.`,
-            type: 'info'
+            title: destStepName || step.step_name,
+            message: `Conditions met in "${step.step_name}". Rules: ${rulesSummary}`,
+            type: 'success'
           });
         }
       }

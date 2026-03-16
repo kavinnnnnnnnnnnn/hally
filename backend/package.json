@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "src/server.js",
     "scripts": {
+      "predev": "lsof -ti :5001 | xargs kill -9 2>/dev/null; true",
       "dev": "nodemon src/server.js"
     },
   "dependencies": {

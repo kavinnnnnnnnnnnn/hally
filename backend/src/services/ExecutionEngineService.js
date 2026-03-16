@@ -71,23 +71,71 @@ class ExecutionEngineService {
 
     const startTime = new Date()
     try {
-      // Delegate rule evaluation to the dedicated RuleEngine service
-      const { matchedRule, error: evaluationError } = ruleEngine.evaluate(step.rules, execution.data)
+      // Check if this is a terminal step (no rules = endpoint)
+      const isTerminalStep = !step.rules || step.rules.length === 0
+
+      if (isTerminalStep) {
+        // Terminal step — just log it and complete
+        const terminalLog = {
+          step_name: step.name,
+          evaluated_rules: [],
+          selected_next_step: "FINISH",
+          next_step_name: "FINISH"
+        }
+        await ExecutionLog.create({
+          execution_id: executionId,
+          step_name: step.name,
+          rule_evaluated: JSON.stringify(terminalLog),
+          result: "ENDPOINT",
+          selected_next_step: "FINISH",
+          status: "COMPLETED",
+          approver_id: step.step_type === "approval" ? step.metadata?.approver_id : null,
+          started_at: startTime,
+          ended_at: new Date()
+        })
+        await execution.update({
+          status: "COMPLETED",
+          approver_id: step.step_type === "approval" ? step.metadata?.approver_id : execution.approver_id
+        })
+        return execution
+      }
+
+      // Step has rules — evaluate them with the RuleEngine
+      const { matchedRule, evaluatedRules, error: evaluationError } = ruleEngine.evaluate(step.rules, execution.data)
       const nextStepId = matchedRule ? matchedRule.next_step_id : null
 
-      // Validate next step existence if it exists
+      // Validate next step existence if it exists, and capture its name
+      let nextStep = null
       if (nextStepId) {
-        const nextStep = await Step.findByPk(nextStepId)
+        nextStep = await Step.findByPk(nextStepId)
         if (!nextStep) {
           throw new Error(`Target step ${nextStepId} not found in database`)
         }
       }
 
+      // Determine a human-readable result label
+      let resultLabel
+      if (!matchedRule) {
+        resultLabel = evaluationError ? "ERROR" : "NO_MATCH"
+      } else if ((matchedRule.condition || "").trim().toUpperCase() === "DEFAULT") {
+        resultLabel = "DEFAULT"
+      } else {
+        resultLabel = "MATCHED"
+      }
+
+      // Log the full per-rule evaluation trace as JSON in rule_evaluated
+      const ruleEvaluationLog = {
+        step_name: step.name,
+        evaluated_rules: evaluatedRules || [],
+        selected_next_step: nextStepId || "FINISH",
+        next_step_name: nextStep ? nextStep.name : "FINISH"
+      }
+
       await ExecutionLog.create({
         execution_id: executionId,
         step_name: step.name,
-        rule_evaluated: matchedRule ? matchedRule.condition : (evaluationError ? "Evaluation Error" : "No rule matched / Default"),
-        result: matchedRule ? "TRUE" : (evaluationError ? "ERROR" : "FALSE/DEFAULT"),
+        rule_evaluated: JSON.stringify(ruleEvaluationLog),
+        result: resultLabel,
         selected_next_step: nextStepId || "FINISH",
         status: evaluationError ? "WARNING" : "COMPLETED",
         error_message: evaluationError,

@@ -20,7 +20,12 @@ const ExecutionLog = ({ steps, executionId }) => {
   steps.forEach(s => {
     const name = s.step_name || s.step || 'Unknown Step';
     const status = (s.status || 'pending').toLowerCase();
-    stepMap.set(name, { status, error: s.error_message });
+    stepMap.set(name, {
+      status,
+      error: s.error_message,
+      result: s.result,
+      nextStep: s.selected_next_step,
+    });
   });
   const uniqueSteps = Array.from(stepMap.entries()).map(([step, data]) => ({ step, ...data }));
 
@@ -69,6 +74,34 @@ const ExecutionLog = ({ steps, executionId }) => {
                 <Typography variant="body1" fontWeight={item.status === 'running' ? 'bold' : 'normal'}>
                   {item.step}
                 </Typography>
+                {/* Show result / routing detail */}
+                {item.result && !['MATCHED', 'ENDPOINT'].includes(item.result) && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    {item.result === 'DEFAULT' && `⚡ No condition matched — used DEFAULT rule`}
+                    {item.result === 'NO_MATCH' && `⚠️ No rule matched & no DEFAULT rule found`}
+                    {item.result === 'ERROR' && `❌ Rule evaluation error`}
+                  </Typography>
+                )}
+                {item.result === 'ENDPOINT' && (
+                  <Typography variant="caption" color="success.main" sx={{ display: 'block' }}>
+                    ✅ Step completed — workflow finished
+                  </Typography>
+                )}
+                {(() => {
+                  // Parse the ruleLog JSON to get next_step_name
+                  try {
+                    const ruleLog = JSON.parse(item.ruleEvaluated || '{}');
+                    const nextName = ruleLog.next_step_name;
+                    if (nextName && nextName !== 'FINISH') {
+                      return (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          → Routed to: {nextName}
+                        </Typography>
+                      );
+                    }
+                    return null;
+                  } catch { return null; }
+                })()}
                 {item.error && (
                   <Typography variant="caption" color="error.main" sx={{ mt: 0.5, display: 'block' }}>
                     Error: {item.error}
