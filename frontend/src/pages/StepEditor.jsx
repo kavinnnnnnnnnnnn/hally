@@ -2,14 +2,28 @@ import React, { useState, useEffect } from 'react';
 import {
   Typography, Box, Button, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, MenuItem, Select, FormControl, InputLabel,
-  Snackbar, Alert
+  Snackbar, Alert, Paper
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import AddIcon from '@mui/icons-material/Add';
 import StepCard from '../components/StepCard';
 import { stepAPI } from '../services/stepAPI';
 
 const stepTypes = ['task', 'approval', 'notification'];
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+};
 
 const StepEditor = () => {
   const { id: workflowId } = useParams();
@@ -93,36 +107,69 @@ const StepEditor = () => {
 
   return (
     <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" fontWeight="bold">
-          Workflow Steps
-        </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
-          Add Step
-        </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+          <Typography variant="h4" fontWeight="bold" sx={{ color: '#60a5fa', textShadow: '0 0 10px rgba(96,165,250,0.3)' }}>
+            Workflow Steps
+          </Typography>
+          <Typography variant="body2" color="text.secondary">Configure sequential actions for your process</Typography>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            startIcon={<AddIcon />} 
+            onClick={() => handleOpenDialog()}
+            component={motion.button}
+            whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(96, 165, 250, 0.4)' }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Add Step
+          </Button>
+        </motion.div>
       </Box>
 
       {loading ? (
-        <Typography>Loading steps...</Typography>
+        <Typography color="text.secondary" sx={{ textAlign: 'center', mt: 4 }}>Loading steps...</Typography>
       ) : steps.length === 0 ? (
-        <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
-          No steps defined for this workflow.
-        </Typography>
+        <Paper sx={{ p: 4, textAlign: 'center', background: 'rgba(22, 27, 44, 0.4)', borderRadius: 4, border: '1px dashed rgba(96, 165, 250, 0.2)' }}>
+          <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
+            No steps defined for this workflow. Click "Add Step" to begin.
+          </Typography>
+        </Paper>
       ) : (
-        steps.map((step, index) => (
-          <StepCard
-            key={step.id}
-            step={step}
-            index={index}
-            onEdit={handleOpenDialog}
-            onDelete={handleDelete}
-          />
-        ))
+        <Box component={motion.div} variants={containerVariants} initial="hidden" animate="visible">
+          <AnimatePresence>
+            {steps.map((step, index) => (
+              <motion.div key={step.id} variants={itemVariants} exit={{ opacity: 0, x: -20 }}>
+                <StepCard
+                  step={step}
+                  index={index}
+                  onEdit={handleOpenDialog}
+                  onDelete={handleDelete}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </Box>
       )}
 
       {/* Add / Edit Dialog */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingStep ? 'Edit Step' : 'Add Step'}</DialogTitle>
+      <Dialog 
+        open={dialogOpen} 
+        onClose={handleCloseDialog} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'rgba(22, 27, 44, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(96, 165, 250, 0.2)',
+            borderRadius: 3
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: '#60a5fa', fontWeight: 'bold' }}>{editingStep ? 'Edit Step' : 'Add Step'}</DialogTitle>
         <DialogContent sx={{ pt: '16px !important' }}>
           <TextField
             label="Step Name"
@@ -130,8 +177,9 @@ const StepEditor = () => {
             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             fullWidth
             sx={{ mb: 3 }}
+            variant="outlined"
           />
-          <FormControl fullWidth>
+          <FormControl fullWidth variant="outlined">
             <InputLabel>Step Type</InputLabel>
             <Select
               value={formData.step_type}
@@ -146,10 +194,15 @@ const StepEditor = () => {
             </Select>
           </FormControl>
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
+        <DialogActions sx={{ p: 3 }}>
           <Button onClick={handleCloseDialog} color="inherit">Cancel</Button>
-          <Button onClick={handleSave} variant="contained" disabled={!formData.name.trim()}>
-            {editingStep ? 'Update' : 'Add'}
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disabled={!formData.name.trim()}
+            sx={{ borderRadius: 2, fontWeight: 'bold' }}
+          >
+            {editingStep ? 'Update' : 'Add Step'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -159,7 +212,7 @@ const StepEditor = () => {
         autoHideDuration={6000} 
         onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
       >
-        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
+        <Alert severity={snackbar.severity} sx={{ width: '100%', borderRadius: 2 }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

@@ -149,6 +149,99 @@ exports.updateWorkflow = async (req, res) => {
   }
 }
 
+const { Execution } = require("../models")
+
+// Get dashboard statistics
+exports.getStats = async (req, res) => {
+  try {
+    const totalWorkflows = await Workflow.count()
+    const successfulExecutions = await Execution.count({ where: { status: "COMPLETED" } })
+    const failedExecutions = await Execution.count({ 
+      where: { 
+        status: { [Op.or]: ["FAILED", "ERROR"] } 
+      } 
+    })
+
+    res.json({
+      totalWorkflows,
+      successfulExecutions,
+      failedExecutions
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+// Get analytics data for graphs
+exports.getAnalytics = async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // 1. Get daily execution stats (Last 7 days)
+    const dailyStats = await Execution.findAll({
+      attributes: [
+        [sequelize.fn('date', sequelize.col('createdAt')), 'date'],
+        'status'
+      ],
+      where: {
+        createdAt: { [Op.gte]: sevenDaysAgo }
+      },
+      raw: true
+    });
+
+    // Process daily stats into a format for Recharts
+    const dateMap = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      dateMap[dateStr] = { date: dateStr, success: 0, failed: 0 };
+    }
+
+    dailyStats.forEach(stat => {
+      const dateStr = stat.date;
+      if (dateMap[dateStr]) {
+        if (stat.status === 'COMPLETED') {
+          dateMap[dateStr].success++;
+        } else if (stat.status === 'FAILED' || stat.status === 'ERROR') {
+          dateMap[dateStr].failed++;
+        }
+      }
+    });
+
+    const executionHistory = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
+
+    // 2. Get failure analysis (Top error messages)
+    const failures = await Execution.findAll({
+      attributes: [
+        'error_message',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+      ],
+      where: {
+        status: { [Op.or]: ['FAILED', 'ERROR'] },
+        error_message: { [Op.ne]: null }
+      },
+      group: ['error_message'],
+      order: [[sequelize.fn('COUNT', sequelize.col('id')), 'DESC']],
+      limit: 5,
+      raw: true
+    });
+
+    const failureAnalysis = failures.map(f => ({
+      error: f.error_message.length > 30 ? f.error_message.substring(0, 30) + '...' : f.error_message,
+      count: parseInt(f.count)
+    }));
+
+    res.json({
+      executionHistory,
+      failureAnalysis
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Delete workflow
 exports.deleteWorkflow = async (req, res) => {
   try {

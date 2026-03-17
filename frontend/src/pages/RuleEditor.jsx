@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import {
   Typography, Box, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, Snackbar, Alert
+  DialogActions, TextField, Snackbar, Alert, Paper
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import AddIcon from '@mui/icons-material/Add';
 import RuleForm from '../components/RuleForm';
 import { ruleAPI } from '../services/ruleAPI';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+};
 
 const RuleEditor = () => {
   const { id: workflowId } = useParams();
@@ -73,6 +87,7 @@ const RuleEditor = () => {
   const handleDelete = async (ruleId) => {
     try {
       await ruleAPI.deleteRule(workflowId, ruleId);
+      setSnackbar({ open: true, message: 'Rule deleted successfully!', severity: 'success' });
       fetchRules();
     } catch (err) {
       console.error('Failed to delete rule:', err);
@@ -81,36 +96,69 @@ const RuleEditor = () => {
 
   return (
     <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" fontWeight="bold">
-          Workflow Rules
-        </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
-          Add Rule
-        </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+          <Typography variant="h4" fontWeight="bold" sx={{ color: '#60a5fa', textShadow: '0 0 10px rgba(96,165,250,0.3)' }}>
+            Workflow Rules
+          </Typography>
+          <Typography variant="body2" color="text.secondary">Define logic branching for this pipeline</Typography>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            startIcon={<AddIcon />} 
+            onClick={() => handleOpenDialog()}
+            component={motion.button}
+            whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(96, 165, 250, 0.4)' }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Add Rule
+          </Button>
+        </motion.div>
       </Box>
 
       {loading ? (
-        <Typography>Loading rules...</Typography>
+        <Typography color="text.secondary" sx={{ textAlign: 'center', mt: 4 }}>Loading rules...</Typography>
       ) : rules.length === 0 ? (
-        <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
-          No rules defined for this workflow.
-        </Typography>
+        <Paper sx={{ p: 4, textAlign: 'center', background: 'rgba(22, 27, 44, 0.4)', borderRadius: 4, border: '1px dashed rgba(96, 165, 250, 0.2)' }}>
+          <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
+            No rules defined for this workflow. Click "Add Rule" to begin.
+          </Typography>
+        </Paper>
       ) : (
-        rules.map((rule, index) => (
-          <RuleForm
-            key={rule.id}
-            rule={rule}
-            index={index}
-            onEdit={handleOpenDialog}
-            onDelete={handleDelete}
-          />
-        ))
+        <Box component={motion.div} variants={containerVariants} initial="hidden" animate="visible">
+          <AnimatePresence>
+            {rules.map((rule, index) => (
+              <motion.div key={rule.id} variants={itemVariants} exit={{ opacity: 0, x: -20 }}>
+                <RuleForm
+                  rule={rule}
+                  index={index}
+                  onEdit={handleOpenDialog}
+                  onDelete={handleDelete}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </Box>
       )}
 
       {/* Add / Edit Dialog */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingRule ? 'Edit Rule' : 'Add Rule'}</DialogTitle>
+      <Dialog 
+        open={dialogOpen} 
+        onClose={handleCloseDialog} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'rgba(22, 27, 44, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(96, 165, 250, 0.2)',
+            borderRadius: 3
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: '#60a5fa', fontWeight: 'bold' }}>{editingRule ? 'Edit Rule' : 'Add Rule'}</DialogTitle>
         <DialogContent sx={{ pt: '16px !important' }}>
           <TextField
             label="Condition"
@@ -121,6 +169,7 @@ const RuleEditor = () => {
             rows={2}
             placeholder='e.g., amount > 100 && country == "US"'
             sx={{ mb: 3 }}
+            variant="outlined"
           />
           <TextField
             label="Priority"
@@ -130,6 +179,7 @@ const RuleEditor = () => {
             fullWidth
             sx={{ mb: 3 }}
             inputProps={{ min: 1 }}
+            variant="outlined"
           />
           <TextField
             label="Next Step"
@@ -137,17 +187,18 @@ const RuleEditor = () => {
             onChange={(e) => setFormData(prev => ({ ...prev, nextStep: e.target.value }))}
             fullWidth
             placeholder="e.g., Manager Approval"
+            variant="outlined"
           />
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
+        <DialogActions sx={{ p: 3 }}>
           <Button onClick={handleCloseDialog} color="inherit">Cancel</Button>
           <Button
             onClick={handleSave}
             variant="contained"
             disabled={!(formData.condition || '').trim()}
+            sx={{ borderRadius: 2, fontWeight: 'bold' }}
           >
-
-            {editingRule ? 'Update' : 'Add'}
+            {editingRule ? 'Update Rule' : 'Add Rule'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -157,7 +208,7 @@ const RuleEditor = () => {
         autoHideDuration={6000} 
         onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
       >
-        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
+        <Alert severity={snackbar.severity} sx={{ width: '100%', borderRadius: 2 }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

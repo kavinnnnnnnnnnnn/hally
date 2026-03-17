@@ -6,6 +6,8 @@ const stepRoutes = require("./stepRoutes")
 const ruleRoutes = require("./ruleRoutes")
 
 // Define REST API routes (mounted at /api/workflows in app.js)
+router.get("/stats", workflowController.getStats)
+router.get("/analytics", workflowController.getAnalytics)
 router.post("/", workflowController.createWorkflow)
 router.get("/", workflowController.getWorkflows)
 router.get("/:id", workflowController.getWorkflow)

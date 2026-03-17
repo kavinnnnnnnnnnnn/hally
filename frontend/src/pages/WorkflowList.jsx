@@ -4,12 +4,30 @@ import {
   TableContainer, TableHead, TableRow, Paper, IconButton, Tooltip, Chip 
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import EditIcon from '@mui/icons-material/Edit';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import RuleIcon from '@mui/icons-material/Rule';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddIcon from '@mui/icons-material/Add';
 import { workflowAPI } from '../services/workflowAPI';
+
+const MotionTableRow = motion(TableRow);
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
 
 const WorkflowList = () => {
   const navigate = useNavigate();
@@ -32,74 +50,92 @@ const WorkflowList = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" fontWeight="bold">Workflows</Typography>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/workflows/create')}
-        >
-          Create Workflow
-        </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+          <Typography variant="h4" fontWeight="bold" sx={{ color: '#60a5fa', textShadow: '0 0 10px rgba(96,165,250,0.3)' }}>
+            Workflows
+          </Typography>
+          <Typography variant="body2" color="text.secondary">Manage your automation pipelines</Typography>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/workflows/create')}
+            component={motion.button}
+            whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(96, 165, 250, 0.4)' }}
+            whileTap={{ scale: 0.95 }}
+            sx={{ fontWeight: 'bold' }}
+          >
+            Create Workflow
+          </Button>
+        </motion.div>
       </Box>
 
-      <TableContainer component={Paper} elevation={2}>
+      <TableContainer component={Paper} elevation={0} sx={{ background: 'rgba(22, 27, 44, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 2 }}>
         <Table sx={{ minWidth: 650 }} aria-label="workflow table">
-          <TableHead sx={{ bgcolor: 'grey.100' }}>
+          <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.2)' }}>
             <TableRow>
-              <TableCell sx={{ fontWeight: 'bold' }}>Workflow Name</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Version</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Workflow Name</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Version</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'text.secondary' }} align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
-          <TableBody>
+          <TableBody component={motion.tbody} variants={containerVariants} initial="hidden" animate="visible">
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} align="center">Loading...</TableCell>
+                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>Loading workflows...</TableCell>
               </TableRow>
             ) : workflows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} align="center">No workflows found.</TableCell>
+                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>No workflows found. Create one to get started.</TableCell>
               </TableRow>
             ) : (
               workflows.map((workflow) => (
-                <TableRow key={workflow.id} hover>
-                  <TableCell component="th" scope="row">
+                <MotionTableRow 
+                  key={workflow.id} 
+                  hover 
+                  variants={itemVariants}
+                  sx={{ '&:last-child td, &:last-child th': { border: 0 }, transition: 'background-color 0.2s', '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}
+                >
+                  <TableCell component="th" scope="row" sx={{ fontWeight: 500 }}>
                     {workflow.name}
                   </TableCell>
-                  <TableCell>{workflow.version}</TableCell>
+                  <TableCell>v{workflow.version}</TableCell>
                   <TableCell>
                     <Chip 
                       label={workflow.status} 
                       color={workflow.status === 'Active' ? 'success' : 'default'} 
                       size="small" 
+                      variant="outlined"
+                      sx={{ fontWeight: 'bold', borderColor: workflow.status === 'Active' ? '#60a5fa' : 'divider', color: workflow.status === 'Active' ? '#60a5fa' : 'text.secondary' }}
                     />
                   </TableCell>
                   <TableCell align="right">
                     <Tooltip title="Edit Workflow">
-                      <IconButton color="primary" onClick={() => navigate(`/workflows/${workflow.id}/edit`)}>
+                      <IconButton component={motion.button} whileHover={{ scale: 1.1, color: '#60a5fa' }} color="primary" onClick={() => navigate(`/workflows/${workflow.id}/edit`)}>
                         <EditIcon />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Manage Steps">
-                      <IconButton color="info" onClick={() => navigate(`/workflows/${workflow.id}/steps`)}>
+                      <IconButton component={motion.button} whileHover={{ scale: 1.1, color: '#2563eb' }} color="primary" onClick={() => navigate(`/workflows/${workflow.id}/steps`)}>
                         <AccountTreeIcon />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Manage Rules">
-                      <IconButton color="secondary" onClick={() => navigate(`/workflows/${workflow.id}/rules`)}>
+                      <IconButton component={motion.button} whileHover={{ scale: 1.1, color: '#93c5fd' }} color="primary" onClick={() => navigate(`/workflows/${workflow.id}/rules`)}>
                         <RuleIcon />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Execute Workflow">
-                      <IconButton color="success" onClick={() => navigate(`/workflows/${workflow.id}/execute`)}>
+                      <IconButton component={motion.button} whileHover={{ scale: 1.1, color: '#60a5fa' }} color="primary" onClick={() => navigate(`/workflows/${workflow.id}/execute`)}>
                         <PlayArrowIcon />
                       </IconButton>
                     </Tooltip>
                   </TableCell>
-                </TableRow>
+                </MotionTableRow>
               ))
             )}
           </TableBody>

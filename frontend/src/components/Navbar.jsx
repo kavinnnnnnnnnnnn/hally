@@ -10,6 +10,9 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useNotifications } from '../context/NotificationContext';
+import { motion } from 'framer-motion';
+
+const MotionIconButton = motion(IconButton);
 
 const Navbar = () => {
   const { notifications, unreadCount, markAsRead, clearAll, latestNotification, clearLatest } = useNotifications();
@@ -30,29 +33,46 @@ const Navbar = () => {
 
   const getNotificationIcon = (type) => {
     switch (type) {
-      case 'error': return <Avatar sx={{ bgcolor: 'error.light', color: 'error.main' }}><ErrorOutlineIcon fontSize="small" /></Avatar>;
-      case 'warning': return <Avatar sx={{ bgcolor: 'warning.light', color: 'warning.main' }}><WarningAmberIcon fontSize="small" /></Avatar>;
-      default: return <Avatar sx={{ bgcolor: 'info.light', color: 'info.main' }}><InfoOutlinedIcon fontSize="small" /></Avatar>;
+      case 'error': return <Avatar sx={{ bgcolor: 'error.main', color: '#fff' }}><ErrorOutlineIcon fontSize="small" /></Avatar>;
+      case 'warning': return <Avatar sx={{ bgcolor: 'warning.main', color: '#fff' }}><WarningAmberIcon fontSize="small" /></Avatar>;
+      default: return <Avatar sx={{ bgcolor: 'info.main', color: '#fff' }}><InfoOutlinedIcon fontSize="small" /></Avatar>;
     }
   };
 
   return (
     <>
-    <AppBar position="static" color="inherit" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+    <AppBar position="static" elevation={0} sx={{ 
+      background: 'rgba(5, 5, 5, 0.7)', 
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      borderBottom: '1px solid rgba(255, 255, 255, 0.08)' 
+    }}>
       <Toolbar>
         <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 2, display: { sm: 'none' } }}>
           <MenuIcon />
         </IconButton>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold', color: 'primary.main' }}>
-          Workflow Automation System
-        </Typography>
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold', color: 'primary.main', letterSpacing: 1 }}>
+            Hally<span style={{ color: '#d2e8d6ff' }}>Automation</span>
+          </Typography>
+        </motion.div>
+        
+        <Box sx={{ flexGrow: 1 }} />
+
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <IconButton color="inherit" onClick={handleOpenNotifications}>
+          <MotionIconButton 
+            color="inherit" 
+            onClick={handleOpenNotifications}
+            whileHover={{ scale: 1.1, textShadow: '0px 0px 8px rgba(96, 165, 250, 0.8)' }}
+            whileTap={{ scale: 0.95 }}
+          >
             <Badge badgeContent={unreadCount} color="error">
               <NotificationsIcon />
             </Badge>
-          </IconButton>
-          <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>U</Avatar>
+          </MotionIconButton>
+          <motion.div whileHover={{ scale: 1.05 }}>
+            <Avatar sx={{ bgcolor: 'secondary.main', width: 36, height: 36, fontWeight: 'bold' }}>U</Avatar>
+          </motion.div>
         </Box>
 
         <Menu
@@ -60,7 +80,14 @@ const Navbar = () => {
           open={Boolean(anchorEl)}
           onClose={handleCloseNotifications}
           PaperProps={{
-            sx: { width: 320, maxHeight: 400, mt: 1.5 }
+            sx: { 
+              width: 320, 
+              maxHeight: 400, 
+              mt: 1.5,
+              background: 'rgba(25, 25, 30, 0.9)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }
           }}
         >
           <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

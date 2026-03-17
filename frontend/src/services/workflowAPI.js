@@ -36,4 +36,14 @@ export const workflowAPI = {
     const response = await API.get('/workflows');
     return response.data;
   },
+
+  // GET /workflows/stats - Fetch dashboard statistics
+  getStats: async () => {
+    const response = await API.get('/workflows/stats');
+    return response.data;
+  },
+  getAnalytics: async () => {
+    const response = await API.get('/workflows/analytics');
+    return response.data;
+  },
 };

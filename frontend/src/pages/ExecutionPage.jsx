@@ -4,10 +4,24 @@ import {
   LinearProgress, Alert
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ExecutionLog from '../components/ExecutionLog';
 import { executionAPI } from '../services/executionAPI';
 import { useNotifications } from '../context/NotificationContext';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } }
+};
 
 const ExecutionPage = () => {
   const { id: workflowId } = useParams();
@@ -47,12 +61,10 @@ const ExecutionPage = () => {
         await new Promise(resolve => setTimeout(resolve, 800));
         setProgressSteps(prev => [...prev, step]);
 
-        // Add notification for the step completion
         const ruleLog = (() => {
           try { return JSON.parse(step.rule_evaluated); } catch { return null; }
         })();
 
-        // next_step_name is the DESTINATION — what step the workflow is going to
         const destStepName = ruleLog?.next_step_name || null;
         const rulesSummary = ruleLog?.evaluated_rules
           ? ruleLog.evaluated_rules.map(r => `"${r.rule}" → ${r.result}`).join(' | ')
@@ -71,21 +83,18 @@ const ExecutionPage = () => {
             type: 'error'
           });
         } else if (step.result === 'ENDPOINT') {
-          // Terminal step — no rules, just a workflow endpoint
           addNotification({
             title: step.step_name,
             message: `Step "${step.step_name}" completed. Workflow finished.`,
             type: 'success'
           });
         } else if (step.result === 'DEFAULT') {
-          // At least one rule did NOT match the full condition — use default path
           addNotification({
             title: destStepName || 'Task Rejection',
             message: `Conditions not fully met in "${step.step_name}". Rules: ${rulesSummary}`,
             type: 'warning'
           });
         } else {
-          // MATCHED — all conditions in the winning rule were satisfied
           addNotification({
             title: destStepName || step.step_name,
             message: `Conditions met in "${step.step_name}". Rules: ${rulesSummary}`,
@@ -106,85 +115,125 @@ const ExecutionPage = () => {
     progressSteps[progressSteps.length - 1]?.status === 'completed';
 
   return (
-    <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Execute Workflow
-      </Typography>
+    <Box sx={{ p: 3, maxWidth: 900, mx: 'auto' }}>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}>
+        <Typography variant="h3" fontWeight="bold" gutterBottom sx={{ color: '#60a5fa', textShadow: '0 0 10px rgba(96,165,250,0.3)', textAlign: 'center', mb: 4 }}>
+          Execute Workflow
+        </Typography>
 
-      <Paper elevation={3} sx={{ p: 4, mt: 3 }}>
-        <Typography variant="h6" gutterBottom>Workflow Inputs</Typography>
-        <Grid container spacing={3}>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              label="Amount"
-              name="amount"
-              type="number"
-              value={inputs.amount}
-              onChange={handleChange}
-              fullWidth
-              variant="outlined"
-              placeholder="e.g., 150"
-            />
+        <Paper 
+          component={motion.div}
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          elevation={0} 
+          sx={{ 
+            p: 4, 
+            background: 'rgba(22, 27, 44, 0.65)', 
+            backdropFilter: 'blur(12px)', 
+            border: '1px solid rgba(96, 165, 250, 0.1)', 
+            borderRadius: 4,
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)'
+          }}
+        >
+          <Typography variant="h6" gutterBottom sx={{ color: 'text.secondary', fontWeight: 'bold' }}>Workflow Inputs</Typography>
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={4} component={motion.div} variants={itemVariants}>
+              <TextField
+                label="Amount"
+                name="amount"
+                type="number"
+                value={inputs.amount}
+                onChange={handleChange}
+                fullWidth
+                variant="outlined"
+                placeholder="e.g., 150"
+                sx={{ '& .MuiOutlinedInput-root': { backdropFilter: 'blur(4px)' } }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4} component={motion.div} variants={itemVariants}>
+              <TextField
+                label="Country"
+                name="country"
+                value={inputs.country}
+                onChange={handleChange}
+                fullWidth
+                variant="outlined"
+                placeholder='e.g., US'
+                sx={{ '& .MuiOutlinedInput-root': { backdropFilter: 'blur(4px)' } }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4} component={motion.div} variants={itemVariants}>
+              <TextField
+                label="Priority"
+                name="priority"
+                value={inputs.priority}
+                onChange={handleChange}
+                fullWidth
+                variant="outlined"
+                placeholder="e.g., high"
+                sx={{ '& .MuiOutlinedInput-root': { backdropFilter: 'blur(4px)' } }}
+              />
+            </Grid>
+            <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }} component={motion.div} variants={itemVariants}>
+              <Button
+                component={motion.button}
+                whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.6)' }}
+                whileTap={{ scale: 0.95 }}
+                variant="contained"
+                color="primary"
+                size="large"
+                startIcon={<PlayArrowIcon />}
+                onClick={handleRun}
+                disabled={executing}
+                sx={{ px: 4, py: 1.5, fontSize: '1.1rem', borderRadius: 2 }}
+              >
+                {executing ? 'Running...' : 'Run Workflow'}
+              </Button>
+            </Grid>
           </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              label="Country"
-              name="country"
-              value={inputs.country}
-              onChange={handleChange}
-              fullWidth
-              variant="outlined"
-              placeholder='e.g., US'
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              label="Priority"
-              name="priority"
-              value={inputs.priority}
-              onChange={handleChange}
-              fullWidth
-              variant="outlined"
-              placeholder="e.g., high"
-            />
-          </Grid>
-          <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              startIcon={<PlayArrowIcon />}
-              onClick={handleRun}
-              disabled={executing}
-            >
-              {executing ? 'Running...' : 'Run Workflow'}
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
+        </Paper>
+      </motion.div>
 
-      {executing && (
-        <Box sx={{ mt: 3 }}>
-          <LinearProgress />
-        </Box>
-      )}
+      <AnimatePresence>
+        {executing && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }} 
+            animate={{ opacity: 1, height: 'auto' }} 
+            exit={{ opacity: 0, height: 0 }}
+            sx={{ mt: 4 }}
+          >
+            <Box sx={{ mt: 4 }}>
+              <LinearProgress color="primary" sx={{ height: 8, borderRadius: 4 }} />
+            </Box>
+          </motion.div>
+        )}
 
-      {error && (
-        <Alert severity="error" sx={{ mt: 3 }}>{error}</Alert>
-      )}
+        {error && (
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} sx={{ mt: 4 }}>
+            <Alert severity="error" sx={{ mt: 4, borderRadius: 2 }}>{error}</Alert>
+          </motion.div>
+        )}
 
-      {allStepsCompleted && (
-        <Alert severity="success" sx={{ mt: 3 }}>
-          Workflow executed successfully!
-        </Alert>
-      )}
+        {allStepsCompleted && (
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} sx={{ mt: 4 }}>
+            <Alert severity="success" sx={{ mt: 4, borderRadius: 2 }}>
+              Workflow executed successfully!
+            </Alert>
+          </motion.div>
+        )}
 
-      {progressSteps.length > 0 && (
-        <ExecutionLog
-          steps={progressSteps}
-          executionId={executionResult?.id}
-        />
-      )}
+        {progressSteps.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <Box sx={{ mt: 4 }}>
+              <ExecutionLog
+                steps={progressSteps}
+                executionId={executionResult?.id}
+              />
+            </Box>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Box>
   );
 };

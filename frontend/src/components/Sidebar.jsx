@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box, List, ListItem, ListItemIcon, ListItemText, Divider, Typography, Drawer, IconButton } from '@mui/material';
+import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
@@ -56,32 +57,43 @@ const Sidebar = () => {
       </Box>
       <Divider />
       <List sx={{ flexGrow: 1, pt: 2 }}>
-        {menuItems.map((item) => (
-          <ListItem 
-            button 
-            key={item.text} 
-            onClick={() => navigate(item.path)}
-            selected={location.pathname.startsWith(item.path)}
-            sx={{
-              mb: 1,
-              mx: 1,
-              borderRadius: 2, // Use theme or explicit rounded corners
-              justifyContent: open ? 'initial' : 'center',
-              px: open ? 2.5 : 1,
-              '&.Mui-selected': { 
-                bgcolor: 'primary.main', 
-                color: 'primary.contrastText', 
-                '& .MuiListItemIcon-root': { color: 'primary.contrastText' },
-                '&:hover': { bgcolor: 'primary.dark' }
-              },
-              '&:hover': { bgcolor: 'action.hover' }
-            }}
+        {menuItems.map((item, index) => (
+          <motion.div
+            key={item.text}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.1, duration: 0.3 }}
           >
-            <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: location.pathname.startsWith(item.path) ? 'inherit' : 'text.secondary' }}>
-              {item.icon}
-            </ListItemIcon>
-            <ListItemText primary={item.text} sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none' }} primaryTypographyProps={{ fontWeight: location.pathname.startsWith(item.path) ? 'bold' : 'normal' }} />
-          </ListItem>
+            <ListItem 
+              button 
+              component={motion.div}
+              whileHover={{ scale: 1.02, x: 5 }}
+              onClick={() => navigate(item.path)}
+              selected={location.pathname.startsWith(item.path)}
+              sx={{
+                mb: 1,
+                mx: 1,
+                borderRadius: 2, // Use theme or explicit rounded corners
+                justifyContent: open ? 'initial' : 'center',
+                px: open ? 2.5 : 1,
+                transition: 'all 0.2s ease',
+                '&.Mui-selected': { 
+                  bgcolor: 'rgba(96, 165, 250, 0.15)', // Sky Blue tint
+                  color: 'primary.main', 
+                  borderLeft: '4px solid',
+                  borderColor: 'primary.main',
+                  '& .MuiListItemIcon-root': { color: 'primary.main' },
+                  '&:hover': { bgcolor: 'rgba(96, 165, 250, 0.25)' }
+                },
+                '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.05)' }
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: location.pathname.startsWith(item.path) ? 'inherit' : 'text.secondary', transition: 'all 0.2s ease' }}>
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText primary={item.text} sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none', transition: 'opacity 0.2s ease' }} primaryTypographyProps={{ fontWeight: location.pathname.startsWith(item.path) ? 'bold' : 'normal' }} />
+            </ListItem>
+          </motion.div>
         ))}
       </List>
     </Drawer>
