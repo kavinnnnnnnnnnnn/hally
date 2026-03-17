@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { 
   Typography, Box, Button, Table, TableBody, TableCell, 
-  TableContainer, TableHead, TableRow, Paper, IconButton, Tooltip, Chip 
+  TableContainer, TableHead, TableRow, Paper, IconButton, Tooltip, Chip,
+  Dialog, DialogTitle, DialogContent, DialogActions 
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -10,6 +11,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import RuleIcon from '@mui/icons-material/Rule';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { workflowAPI } from '../services/workflowAPI';
 
 const MotionTableRow = motion(TableRow);
@@ -33,20 +35,47 @@ const WorkflowList = () => {
   const navigate = useNavigate();
   const [workflows, setWorkflows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [workflowToDelete, setWorkflowToDelete] = useState(null);
+
+  const fetchWorkflows = async () => {
+    try {
+      setLoading(true);
+      const data = await workflowAPI.getAllWorkflows();
+      setWorkflows(data.workflows || []);
+    } catch (error) {
+      console.error('Failed to fetch workflows:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchWorkflows = async () => {
-      try {
-        const data = await workflowAPI.getAllWorkflows();
-        setWorkflows(data.workflows || []);
-      } catch (error) {
-        console.error('Failed to fetch workflows:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchWorkflows();
   }, []);
+
+  const handleDeleteClick = (workflow) => {
+    setWorkflowToDelete(workflow);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!workflowToDelete) return;
+    try {
+      await workflowAPI.deleteWorkflow(workflowToDelete.id);
+      setDeleteDialogOpen(false);
+      setWorkflowToDelete(null);
+      fetchWorkflows(); // Refresh list
+    } catch (error) {
+      console.error('Failed to delete workflow:', error);
+      alert('Failed to delete workflow');
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setWorkflowToDelete(null);
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -134,6 +163,11 @@ const WorkflowList = () => {
                         <PlayArrowIcon />
                       </IconButton>
                     </Tooltip>
+                    <Tooltip title="Delete Workflow">
+                      <IconButton component={motion.button} whileHover={{ scale: 1.1, color: '#ef4444' }} color="error" onClick={() => handleDeleteClick(workflow)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </MotionTableRow>
               ))
@@ -141,6 +175,41 @@ const WorkflowList = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        PaperProps={{
+          sx: {
+            background: '#0f172a',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 3,
+            color: '#fff'
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 'bold' }}>Delete Workflow?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            Are you sure you want to delete <strong>{workflowToDelete?.name}</strong>? 
+            This action is permanent and cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={handleDeleteCancel} sx={{ color: 'text.secondary' }}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirm} 
+            variant="contained" 
+            color="error"
+            sx={{ borderRadius: 2, fontWeight: 'bold' }}
+          >
+            Delete Permanently
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
