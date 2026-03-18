@@ -4,7 +4,12 @@ const dbUrl = process.env.MYSQL_PUBLIC_URL || null;
 
 const sequelize = dbUrl 
   ? new Sequelize(dbUrl, {
-      dialect: "mysql"
+      dialect: "mysql",
+      dialectOptions: {
+        ssl: {
+          rejectUnauthorized: false
+        }
+      }
     })
   : new Sequelize(
       process.env.DB_NAME,
@@ -12,7 +17,12 @@ const sequelize = dbUrl
       process.env.DB_PASS,
       {
         host: process.env.DB_HOST,
-        dialect: "mysql"
+        dialect: "mysql",
+        dialectOptions: {
+          ssl: {
+            rejectUnauthorized: false
+          }
+        }
       }
     );
 
