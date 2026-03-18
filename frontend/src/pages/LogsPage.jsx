@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import { executionAPI } from '../services/executionAPI';
+import { useSocket } from '../context/SocketContext';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -25,20 +26,33 @@ const LogsPage = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const socket = useSocket();
+
+  const fetchLogs = async () => {
+    try {
+      const data = await executionAPI.getLogs();
+      setLogs(Array.isArray(data.rows) ? data.rows : []);
+    } catch (err) {
+      console.error('Failed to fetch logs:', err);
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const data = await executionAPI.getLogs();
-        setLogs(Array.isArray(data.rows) ? data.rows : []);
-      } catch (err) {
-        console.error('Failed to fetch logs:', err);
-        setLogs([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchLogs();
-  }, []);
+
+    if (socket) {
+      socket.on('execution_started', fetchLogs);
+      socket.on('execution_updated', fetchLogs);
+      
+      return () => {
+        socket.off('execution_started', fetchLogs);
+        socket.off('execution_updated', fetchLogs);
+      };
+    }
+  }, [socket]);
 
   const getStatusColor = (status) => {
     if (!status) return 'default';

@@ -13,6 +13,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { workflowAPI } from '../services/workflowAPI';
+import { useSocket } from '../context/SocketContext';
 
 const MotionTableRow = motion(TableRow);
 
@@ -50,9 +51,16 @@ const WorkflowList = () => {
     }
   };
 
+  const socket = useSocket();
+
   useEffect(() => {
     fetchWorkflows();
-  }, []);
+
+    if (socket) {
+      socket.on('workflow_updated', fetchWorkflows);
+      return () => socket.off('workflow_updated', fetchWorkflows);
+    }
+  }, [socket]);
 
   const handleDeleteClick = (workflow) => {
     setWorkflowToDelete(workflow);

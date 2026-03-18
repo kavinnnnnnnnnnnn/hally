@@ -5,6 +5,7 @@ import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'
 import App from './App.jsx'
 import './styles/global.css'
 import { WorkflowProvider } from './context/WorkflowContext.jsx'
+import { SocketProvider } from './context/SocketContext.jsx'
 
 const theme = createTheme({
   palette: {
@@ -103,7 +104,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <CssBaseline />
         <ErrorBoundary>
           <WorkflowProvider>
-            <App />
+            <SocketProvider>
+              <App />
+            </SocketProvider>
           </WorkflowProvider>
         </ErrorBoundary>
       </ThemeProvider>

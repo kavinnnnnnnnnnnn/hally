@@ -2,6 +2,7 @@ require("dotenv").config()
 
 const app = require("./app")
 const sequelize = require("./config/db")
+const { initSocket } = require("./config/socket")
 const { Workflow, Step } = require("./models") // Load models and associations
 
 const PORT = process.env.PORT || 5001
@@ -35,6 +36,9 @@ sequelize.sync().then(async () => {
   const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
   })
+
+  // Initialize Socket.io
+  initSocket(server);
 
   // Gracefully handle port-in-use
   server.on("error", (err) => {

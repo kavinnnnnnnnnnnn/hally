@@ -1,5 +1,6 @@
 const { Workflow, Step, Rule, Execution, ExecutionLog } = require("../models")
 const ruleEngine = require("./ruleEngine")
+const { getIO } = require("../config/socket")
 
 /**
  * Service to manage workflow execution lifecycle
@@ -24,7 +25,12 @@ class ExecutionEngineService {
       })
 
       // Start processing steps
-      return await this.processStep(execution.id)
+      const res = await this.processStep(execution.id)
+      
+      // Emit initial start
+      try { getIO().emit("execution_updated", { id: execution.id, status: "RUNNING" }); } catch(e) {}
+      
+      return res
     } catch (error) {
       console.error("Execute Workflow Error:", error)
       throw error
@@ -144,21 +150,31 @@ class ExecutionEngineService {
         ended_at: new Date()
       })
 
-      if (nextStepId) {
-        await execution.update({ 
-          current_step_id: nextStepId,
-          error_message: evaluationError,
-          approver_id: step.step_type === "approval" ? step.metadata?.approver_id : execution.approver_id
-        })
-        return await this.processStep(execution.id, iterationCount + 1) // Transition with safety increment
-      } else {
-        await execution.update({ 
-          status: "COMPLETED",
-          error_message: evaluationError,
-          approver_id: step.step_type === "approval" ? step.metadata?.approver_id : execution.approver_id
-        })
-        return execution
-      }
+        // Emit update
+        try { 
+          getIO().emit("execution_updated", { 
+            id: execution.id, 
+            status: nextStepId ? "RUNNING" : "COMPLETED",
+            current_step: step.name,
+            next_step: nextStep ? nextStep.name : "FINISH"
+          }); 
+        } catch(e) {}
+
+        if (nextStepId) {
+          await execution.update({ 
+            current_step_id: nextStepId,
+            error_message: evaluationError,
+            approver_id: step.step_type === "approval" ? step.metadata?.approver_id : execution.approver_id
+          })
+          return await this.processStep(execution.id, iterationCount + 1) // Transition with safety increment
+        } else {
+          await execution.update({ 
+            status: "COMPLETED",
+            error_message: evaluationError,
+            approver_id: step.step_type === "approval" ? step.metadata?.approver_id : execution.approver_id
+          })
+          return execution
+        }
     } catch (error) {
       console.error(`Process Step Error (ID: ${currentStepId}):`, error)
       

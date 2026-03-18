@@ -1,5 +1,6 @@
 const ExecutionEngineService = require("../services/ExecutionEngineService")
 const { Execution, ExecutionLog, Workflow } = require("../models")
+const { getIO } = require("../config/socket")
 
 // Start workflow execution
 exports.startExecution = async (req, res) => {
@@ -8,6 +9,9 @@ exports.startExecution = async (req, res) => {
     // Frontend sends inputs as { inputs: { ... } }
     const inputData = req.body.inputs || req.body
     const executionResult = await ExecutionEngineService.executeWorkflow(workflow_id, inputData)
+    
+    // Emit start
+    try { getIO().emit("execution_started", { id: executionResult.id, workflow_id }); } catch(e) {}
     
     // Fetch with logs to provide steps information to frontend
     const execution = await Execution.findByPk(executionResult.id, {
@@ -72,6 +76,10 @@ exports.cancelExecution = async (req, res) => {
     }
     
     await execution.update({ status: "CANCELLED" })
+    
+    // Emit update
+    try { getIO().emit("execution_updated", { id: req.params.id, status: "CANCELLED" }); } catch(e) {}
+
     res.json({ message: "Execution cancelled" })
   } catch (error) {
     res.status(500).json({ error: error.message })

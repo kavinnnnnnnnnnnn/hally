@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { workflowAPI } from '../services/workflowAPI';
 import ThreeDAnalytics from '../components/ThreeDAnalytics';
+import { useSocket } from '../context/SocketContext';
 
 const statVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -47,11 +48,23 @@ const Dashboard = () => {
     }
   };
 
+  const socket = useSocket();
+
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000); // Poll every 10 seconds for "lively" updates
-    return () => clearInterval(interval);
-  }, []);
+    
+    if (socket) {
+      socket.on('workflow_updated', fetchData);
+      socket.on('execution_updated', fetchData);
+      socket.on('execution_started', fetchData);
+      
+      return () => {
+        socket.off('workflow_updated', fetchData);
+        socket.off('execution_updated', fetchData);
+        socket.off('execution_started', fetchData);
+      };
+    }
+  }, [socket]);
 
   const stats = [
     { title: 'Active Workflows', value: dashboardStats.totalWorkflows, icon: <AutorenewIcon sx={{ fontSize: 40, color: 'primary.main' }} /> },

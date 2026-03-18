@@ -1,4 +1,5 @@
 const { Workflow, Step, Rule } = require("../models")
+const { getIO } = require("../config/socket")
 
 // Create new workflow
 exports.createWorkflow = async (req, res) => {
@@ -14,6 +15,10 @@ exports.createWorkflow = async (req, res) => {
     }
     
     const workflow = await Workflow.create(data)
+    
+    // Emit update
+    try { getIO().emit("workflow_updated", { action: "create", id: workflow.id }); } catch(e) {}
+
     res.status(201).json(workflow)
   } catch (error) {
     res.status(400).json({ error: error.message })
@@ -143,6 +148,9 @@ exports.updateWorkflow = async (req, res) => {
       version: newVersion
     })
     
+    // Emit update
+    try { getIO().emit("workflow_updated", { action: "update", id: workflow.id }); } catch(e) {}
+
     res.json(workflow)
   } catch (error) {
     res.status(400).json({ error: error.message })
@@ -252,6 +260,10 @@ exports.deleteWorkflow = async (req, res) => {
     }
     
     await workflow.destroy()
+    
+    // Emit update
+    try { getIO().emit("workflow_updated", { action: "delete", id: req.params.id }); } catch(e) {}
+
     res.status(204).send()
   } catch (error) {
     res.status(500).json({ error: error.message })
