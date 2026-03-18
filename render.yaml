@@ -27,5 +27,5 @@ services:
 
 databases:
   - name: hally-db
-    type: mysql
+    type: postgres
     plan: free
