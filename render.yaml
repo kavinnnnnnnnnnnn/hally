@@ -1,31 +1,32 @@
 services:
   - type: web
-    name: hally-backend
-    env: node
-    plan: free
-    buildCommand: npm install
-    startCommand: npm start
-    envVars:
-      - key: DB_HOST
-        fromDatabase:
-          name: hally-db
-          property: host
-      - key: DB_USER
-        fromDatabase:
-          name: hally-db
-          property: user
-      - key: DB_PASS
-        fromDatabase:
-          name: hally-db
-          property: password
-      - key: DB_NAME
-        fromDatabase:
-          name: hally-db
-          property: database
-      - key: PORT
-        value: 5001
-
-databases:
-  - name: hally-db
-    type: mysql
-    plan: free
+      name: hally-backend
+          env: node
+              plan: free
+                  buildCommand: npm install
+                      startCommand: npm start
+                          envVars:
+                                - key: DB_HOST
+                                        fromDatabase:
+                                                  name: hally-db
+                                                            property: host
+                                                                  - key: DB_USER
+                                                                          fromDatabase:
+                                                                                    name: hally-db
+                                                                                              property: user
+                                                                                                    - key: DB_PASS
+                                                                                                            fromDatabase:
+                                                                                                                      name: hally-db
+                                                                                                                                property: password
+                                                                                                                                      - key: DB_NAME
+                                                                                                                                              fromDatabase:
+                                                                                                                                                        name: hally-db
+                                                                                                                                                                  property: database
+                                                                                                                                                                        - key: PORT
+                                                                                                                                                                                value: 5001
+                                                                                                                                                                                
+                                                                                                                                                                                databases:
+                                                                                                                                                                                  - name: hally-db
+                                                                                                                                                                                      type: postgres
+                                                                                                                                                                                          plan: free
+                                                                                                                                                                                          
