@@ -7,25 +7,16 @@ services:
     startCommand: npm start
     envVars:
       - key: DB_HOST
-        fromDatabase:
-          name: hally-db
-          property: host
+        value: shuttle.proxy.rlwy.net
       - key: DB_USER
-        fromDatabase:
-          name: hally-db
-          property: user
+        value: root
       - key: DB_PASS
-        fromDatabase:
-          name: hally-db
-          property: password
+        value: VNzjzGkacsdAYfXdrorspFDrzSfoTWRR
       - key: DB_NAME
-        fromDatabase:
-          name: hally-db
-          property: database
+        value: railway
+      - key: DB_PORT
+        value: "54209"
+      - key: MYSQL_PUBLIC_URL
+        value: mysql://root:VNzjzGkacsdAYfXdrorspFDrzSfoTWRR@shuttle.proxy.rlwy.net:54209/railway
       - key: PORT
-        value: 5001
-
-databases:
-  - name: hally-db
-    type: mysql
-    plan: free
+        value: "5001"
